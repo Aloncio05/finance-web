@@ -1,4 +1,4 @@
-## Iniciar no Windows
+## Iniciar no Window
 
 1. Crie o arquivo `.env` a partir do `.env.example`.
 2. Instale as dependencias com `npm.cmd install`.
