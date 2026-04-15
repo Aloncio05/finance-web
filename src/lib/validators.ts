@@ -1,0 +1,28 @@
+import { RecurrenceType, TransactionType } from "@/generated/prisma/client";
+import { z } from "zod";
+
+export const authSchema = z.object({
+  name: z.string().min(2, "Informe um nome com ao menos 2 caracteres.").optional(),
+  email: z.email("Informe um e-mail válido.").trim().toLowerCase(),
+  password: z.string().min(6, "A senha precisa ter ao menos 6 caracteres."),
+});
+
+export const categorySchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(2, "Informe um nome para a categoria."),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Selecione uma cor válida."),
+  type: z.enum(TransactionType),
+});
+
+export const transactionSchema = z.object({
+  id: z.string().optional(),
+  description: z.string().trim().min(2, "Informe uma descrição."),
+  notes: z.string().trim().max(240).optional(),
+  type: z.enum(TransactionType),
+  categoryId: z.string().min(1, "Selecione uma categoria."),
+  amount: z.string().min(1, "Informe um valor."),
+  transactionDate: z.string().min(1, "Selecione uma data."),
+  recurrenceType: z.enum(RecurrenceType).default(RecurrenceType.NONE),
+});
