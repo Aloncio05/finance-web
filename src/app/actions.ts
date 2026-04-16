@@ -1,6 +1,7 @@
 'use server';
 
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -8,9 +9,57 @@ import { redirect } from "next/navigation";
 import { RecurrenceType, TransactionType } from "@/generated/prisma/client";
 import { createSession, destroySession, verifySession } from "@/lib/auth";
 import { DEFAULT_CATEGORIES } from "@/lib/constants";
+import { sendPasswordResetEmail } from "@/lib/email";
 import { parseAmountToCents } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { authSchema, categorySchema, transactionSchema } from "@/lib/validators";
+import {
+  authSchema,
+  categorySchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  transactionSchema,
+} from "@/lib/validators";
+
+const PASSWORD_RESET_MAX_AGE_MINUTES = 30;
+const LOCAL_APP_URL = "http://127.0.0.1:3050";
+
+type PasswordResetTokenRecord = {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+  user: {
+    id: string;
+    email: string;
+  };
+};
+
+type PasswordResetTokenClient = {
+  deleteMany(args: { where: object }): Promise<unknown>;
+  create(args: { data: { tokenHash: string; userId: string; expiresAt: Date } }): Promise<unknown>;
+  findFirst(args: {
+    where: {
+      tokenHash: string;
+      usedAt: null;
+      expiresAt: {
+        gt: Date;
+      };
+    };
+    include: {
+      user: {
+        select: {
+          id: true;
+          email: true;
+        };
+      };
+    };
+  }): Promise<PasswordResetTokenRecord | null>;
+  update(args: { where: { id: string }; data: { usedAt: Date } }): Promise<unknown>;
+};
+
+const passwordResetTokens = (prisma as typeof prisma & { passwordResetToken: PasswordResetTokenClient })
+  .passwordResetToken;
 
 function fail(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
@@ -27,6 +76,23 @@ function getNextMonthDate(date: Date) {
 
   nextMonthStart.setDate(Math.min(date.getDate(), nextMonthLastDay));
   return nextMonthStart;
+}
+
+function hashOneTimeToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function getAppUrl() {
+  return process.env.APP_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim() || LOCAL_APP_URL;
+}
+
+function isLocalAppUrl(appUrl: string) {
+  try {
+    const hostname = new URL(appUrl).hostname;
+    return hostname === "127.0.0.1" || hostname === "localhost";
+  } catch {
+    return false;
+  }
 }
 
 export async function registerAction(formData: FormData) {
@@ -100,9 +166,12 @@ export async function loginAction(formData: FormData) {
     fail("/login", parsed.error.issues[0]?.message ?? "Credenciais inválidas.");
   }
 
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: {
-      email: parsed.data.email,
+      email: {
+        equals: parsed.data.email,
+        mode: "insensitive",
+      },
     },
   });
 
@@ -116,8 +185,170 @@ export async function loginAction(formData: FormData) {
     fail("/login", "E-mail ou senha inválidos.");
   }
 
+  if (user.email !== parsed.data.email) {
+    try {
+      await prisma.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          email: parsed.data.email,
+        },
+      });
+    } catch {
+      // Keep login working even if a legacy duplicate prevents normalization.
+    }
+  }
+
   await createSession(user.id);
   redirect("/dashboard");
+}
+
+export async function forgotPasswordAction(formData: FormData) {
+  const parsed = forgotPasswordSchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!parsed.success) {
+    fail("/forgot-password", parsed.error.issues[0]?.message ?? "Informe um e-mail válido.");
+  }
+
+  const user = await prisma.user.findFirst({
+    where: {
+      email: {
+        equals: parsed.data.email,
+        mode: "insensitive",
+      },
+    },
+    select: {
+      id: true,
+      email: true,
+    },
+  });
+
+  const genericMessage = "Se existir uma conta com esse e-mail, você verá as próximas instruções aqui.";
+
+  if (!user) {
+    succeed("/forgot-password", genericMessage);
+  }
+
+  const appUrl = getAppUrl();
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = hashOneTimeToken(token);
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_MAX_AGE_MINUTES * 60 * 1000);
+
+  await passwordResetTokens.deleteMany({
+    where: {
+      userId: user.id,
+      usedAt: null,
+    },
+  });
+
+  await passwordResetTokens.create({
+    data: {
+      tokenHash,
+      userId: user.id,
+      expiresAt,
+    },
+  });
+
+  const resetLink = `${appUrl.replace(/\/$/, "")}/reset-password/${token}`;
+
+  if (isLocalAppUrl(appUrl)) {
+    redirect(
+      `/forgot-password?success=${encodeURIComponent(genericMessage)}&resetLink=${encodeURIComponent(resetLink)}`,
+    );
+  }
+
+  try {
+    await sendPasswordResetEmail({
+      to: user.email,
+      resetLink,
+    });
+  } catch {
+    fail(
+      "/forgot-password",
+      "O envio do e-mail de redefinicao nao esta configurado corretamente neste ambiente.",
+    );
+  }
+
+  succeed("/forgot-password", genericMessage);
+}
+
+export async function resetPasswordAction(formData: FormData) {
+  const parsed = resetPasswordSchema.safeParse({
+    token: formData.get("token"),
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+
+  if (!parsed.success) {
+    const token = String(formData.get("token") || "");
+    fail(`/reset-password/${token}`, parsed.error.issues[0]?.message ?? "Dados inválidos.");
+  }
+
+  const tokenHash = hashOneTimeToken(parsed.data.token);
+  const passwordResetToken = await passwordResetTokens.findFirst({
+    where: {
+      tokenHash,
+      usedAt: null,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  if (!passwordResetToken) {
+    fail(`/reset-password/${parsed.data.token}`, "O link de redefinição expirou ou já foi usado.");
+  }
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+
+  await prisma.user.update({
+    where: {
+      id: passwordResetToken.user.id,
+    },
+    data: {
+      passwordHash,
+      email: passwordResetToken.user.email.trim().toLowerCase(),
+    },
+  });
+
+  await passwordResetTokens.update({
+    where: {
+      id: passwordResetToken.id,
+    },
+    data: {
+      usedAt: new Date(),
+    },
+  });
+
+  await passwordResetTokens.deleteMany({
+    where: {
+      userId: passwordResetToken.user.id,
+      id: {
+        not: passwordResetToken.id,
+      },
+    },
+  });
+
+  await prisma.session.deleteMany({
+    where: {
+      userId: passwordResetToken.user.id,
+    },
+  });
+
+  redirect(
+    `/login?success=${encodeURIComponent("Senha redefinida com sucesso. Entre com a nova senha.")}`,
+  );
 }
 
 export async function logoutAction() {
