@@ -26,6 +26,13 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+select,
+option,
+optgroup {
+  color: #f8fafc;
+  background-color: #0f172a;
+}
+
 a,
 button,
 input,
