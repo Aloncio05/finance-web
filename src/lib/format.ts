@@ -37,6 +37,25 @@ export function getMonthRange(monthValue?: string) {
   };
 }
 
+export function getYearValue(date = new Date()) {
+  return `${date.getFullYear()}`;
+}
+
+export function getYearRange(yearValue?: string) {
+  const safeValue = yearValue && /^\d{4}$/.test(yearValue) ? yearValue : getYearValue();
+  const year = Number(safeValue);
+  const start = new Date(year, 0, 1);
+  const end = new Date(year + 1, 0, 1);
+
+  return {
+    value: safeValue,
+    year,
+    start,
+    end,
+    label: `Ano de ${year}`,
+  };
+}
+
 export function parseAmountToCents(rawValue: string) {
   const parsed = Number(rawValue);
   if (!Number.isFinite(parsed) || parsed <= 0) {
