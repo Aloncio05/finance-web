@@ -38,18 +38,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     orderBy: [{ transactionDate: "desc" }, { createdAt: "desc" }],
   });
 
+  type DashboardTransaction = (typeof transactions)[number];
+  type ExpenseByCategory = { name: string; total: number; color: string };
+
   const totalIncome = transactions
-    .filter((transaction) => transaction.type === "INCOME")
-    .reduce((sum, transaction) => sum + transaction.amountCents, 0);
+    .filter((transaction: DashboardTransaction) => transaction.type === "INCOME")
+    .reduce((sum: number, transaction: DashboardTransaction) => sum + transaction.amountCents, 0);
   const totalExpense = transactions
-    .filter((transaction) => transaction.type === "EXPENSE")
-    .reduce((sum, transaction) => sum + transaction.amountCents, 0);
+    .filter((transaction: DashboardTransaction) => transaction.type === "EXPENSE")
+    .reduce((sum: number, transaction: DashboardTransaction) => sum + transaction.amountCents, 0);
   const balance = totalIncome - totalExpense;
   const monthlyPlan = getMonthlyPlan(totalIncome, totalExpense);
   const expensesByCategory = Object.values(
     transactions
-      .filter((transaction) => transaction.type === "EXPENSE")
-      .reduce<Record<string, { name: string; total: number; color: string }>>((acc, transaction) => {
+      .filter((transaction: DashboardTransaction) => transaction.type === "EXPENSE")
+      .reduce<Record<string, ExpenseByCategory>>((acc: Record<string, ExpenseByCategory>, transaction: DashboardTransaction) => {
         const current = acc[transaction.categoryId] ?? {
           name: transaction.category.name,
           total: 0,
@@ -59,7 +62,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         acc[transaction.categoryId] = current;
         return acc;
       }, {}),
-  ).sort((left, right) => right.total - left.total);
+  ) as ExpenseByCategory[];
+
+  expensesByCategory.sort((left, right) => right.total - left.total);
 
   return (
     <div className="space-y-8">
@@ -71,6 +76,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <p className="max-w-2xl text-sm leading-7 text-slate-300">
               Veja o pulso do seu dinheiro, identifique desequilíbrios rapidamente e ajuste sua rotina antes do fim do mês.
             </p>
+            <Link href="/dashboard/anual" className="inline-flex rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20">
+              Ver projeção anual
+            </Link>
           </div>
 
           <form className="grid gap-3 rounded-3xl border border-white/10 bg-slate-950/40 p-4 sm:grid-cols-[180px,1fr,auto]">
@@ -86,7 +94,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
             >
               <option value="">Todas as categorias</option>
-              {categories.map((category) => (
+              {categories.map((category: (typeof categories)[number]) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
@@ -161,7 +169,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   Nenhuma despesa encontrada neste período.
                 </li>
               ) : (
-                expensesByCategory.map((item) => (
+                expensesByCategory.map((item: ExpenseByCategory) => (
                   <li key={item.name} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                     <div className="flex items-center gap-3">
                       <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
@@ -187,7 +195,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </div>
 
           <div className="mt-6 space-y-3">
-            {transactions.slice(0, 6).map((transaction) => {
+            {transactions.slice(0, 6).map((transaction: DashboardTransaction) => {
               const isIncome = transaction.type === "INCOME";
 
               return (
