@@ -7,6 +7,21 @@ export const authSchema = z.object({
   password: z.string().min(6, "A senha precisa ter ao menos 6 caracteres."),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: authSchema.shape.email,
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, "Token inválido."),
+    password: authSchema.shape.password,
+    confirmPassword: z.string().min(6, "Confirme a nova senha."),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "As senhas não coincidem.",
+    path: ["confirmPassword"],
+  });
+
 export const categorySchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(2, "Informe um nome para a categoria."),
