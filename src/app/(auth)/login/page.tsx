@@ -96,8 +96,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               </SubmitButton>
             </form>
 
+            <div className="flex items-center justify-between gap-3 text-sm text-slate-400">
+              <span>Esqueceu o acesso?</span>
+              <Link href="/forgot-password" className="font-semibold text-cyan-300 transition hover:text-cyan-200">
+                Redefinir senha
+              </Link>
+            </div>
+
             <p className="text-sm text-slate-400">
-              Ainda não tem conta?{' '}
+              Ainda não tem conta?{" "}
               <Link href="/register" className="font-semibold text-cyan-300 transition hover:text-cyan-200">
                 Criar agora
               </Link>
