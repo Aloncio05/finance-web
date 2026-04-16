@@ -51,8 +51,8 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
     }),
   ]);
 
-  const incomeCategories = categories.filter((category) => category.type === TransactionType.INCOME);
-  const expenseCategories = categories.filter((category) => category.type === TransactionType.EXPENSE);
+  const incomeCategories = categories.filter((category: (typeof categories)[number]) => category.type === TransactionType.INCOME);
+  const expenseCategories = categories.filter((category: (typeof categories)[number]) => category.type === TransactionType.EXPENSE);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[440px,1fr]">
@@ -130,14 +130,14 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                 className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-cyan-300"
               >
                 <optgroup label="Despesas">
-                  {expenseCategories.map((category) => (
+                  {expenseCategories.map((category: (typeof expenseCategories)[number]) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
                   ))}
                 </optgroup>
                 <optgroup label="Receitas">
-                  {incomeCategories.map((category) => (
+                  {incomeCategories.map((category: (typeof incomeCategories)[number]) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
@@ -218,7 +218,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300"
               >
                 <option value="">Todas as categorias</option>
-                {categories.map((category) => (
+                {categories.map((category: (typeof categories)[number]) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
@@ -243,7 +243,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
         </div>
 
         <div className="mt-6 space-y-3">
-          {transactions.map((transaction) => {
+          {transactions.map((transaction: (typeof transactions)[number]) => {
             const isIncome = transaction.type === TransactionType.INCOME;
             const recurrenceLabel =
               transaction.recurrenceType === RecurrenceType.FIXED
