@@ -118,7 +118,7 @@ export default async function CategoriesPage({ searchParams }: CategoriesPagePro
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {categories.map((category) => (
+          {categories.map((category: (typeof categories)[number]) => (
             <article key={category.id} className="rounded-3xl border border-white/10 bg-white/5 p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
