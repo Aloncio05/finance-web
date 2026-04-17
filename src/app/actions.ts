@@ -514,8 +514,7 @@ export async function saveTransactionAction(formData: FormData) {
     fail("/transactions", "Selecione uma data válida.");
   }
 
-  const recurrenceType =
-    parsed.data.type === TransactionType.EXPENSE ? parsed.data.recurrenceType : RecurrenceType.NONE;
+  const recurrenceType = parsed.data.recurrenceType;
   const installmentCount = parsed.data.installmentCount;
 
   if (parsed.data.type === TransactionType.INCOME && installmentCount > 1) {
@@ -659,7 +658,7 @@ export async function deleteTransactionAction(formData: FormData) {
   redirect("/transactions");
 }
 
-export async function carryRecurringExpensesAction(formData: FormData) {
+export async function carryRecurringTransactionsAction(formData: FormData) {
   const session = await verifySession();
   const monthValue = String(formData.get("month") || "");
 
@@ -673,10 +672,9 @@ export async function carryRecurringExpensesAction(formData: FormData) {
   const nextMonthStart = new Date(year, month, 1);
   const nextMonthValue = `${nextMonthStart.getFullYear()}-${`${nextMonthStart.getMonth() + 1}`.padStart(2, "0")}`;
 
-  const recurringExpenses = await prisma.transaction.findMany({
+  const recurringTransactions = await prisma.transaction.findMany({
     where: {
       userId: session.user.id,
-      type: TransactionType.EXPENSE,
       recurrenceType: {
         not: RecurrenceType.NONE,
       },
@@ -688,15 +686,15 @@ export async function carryRecurringExpensesAction(formData: FormData) {
     orderBy: [{ transactionDate: "asc" }, { createdAt: "asc" }],
   });
 
-  if (recurringExpenses.length === 0) {
-    fail("/transactions", "Nenhuma despesa recorrente foi encontrada neste mês.");
+  if (recurringTransactions.length === 0) {
+    fail("/transactions", "Nenhum lançamento recorrente foi encontrado neste mês.");
   }
 
   const existingCopies = await prisma.transaction.findMany({
     where: {
       userId: session.user.id,
       carriedFromId: {
-        in: recurringExpenses.map((transaction: (typeof recurringExpenses)[number]) => transaction.id),
+        in: recurringTransactions.map((transaction: (typeof recurringTransactions)[number]) => transaction.id),
       },
     },
     select: {
@@ -709,9 +707,9 @@ export async function carryRecurringExpensesAction(formData: FormData) {
       transaction.carriedFromId ? [transaction.carriedFromId] : [],
     ),
   );
-  const transactionsToCreate = recurringExpenses
-    .filter((transaction: (typeof recurringExpenses)[number]) => !copiedIds.has(transaction.id))
-    .map((transaction: (typeof recurringExpenses)[number]) => ({
+  const transactionsToCreate = recurringTransactions
+    .filter((transaction: (typeof recurringTransactions)[number]) => !copiedIds.has(transaction.id))
+    .map((transaction: (typeof recurringTransactions)[number]) => ({
       userId: session.user.id,
       categoryId: transaction.categoryId,
       type: transaction.type,
@@ -729,7 +727,7 @@ export async function carryRecurringExpensesAction(formData: FormData) {
   if (transactionsToCreate.length === 0) {
     succeed(
       `/transactions?month=${nextMonthValue}`,
-      "As despesas recorrentes deste mês já tinham sido levadas para o próximo.",
+      "Os lançamentos recorrentes deste mês já tinham sido levados para o próximo.",
     );
   }
 
@@ -742,6 +740,6 @@ export async function carryRecurringExpensesAction(formData: FormData) {
   revalidatePath("/dashboard/anual");
   succeed(
     `/transactions?month=${nextMonthValue}`,
-    `${transactionsToCreate.length} despesa(s) recorrente(s) foram levadas para ${nextMonthValue}.`,
+    `${transactionsToCreate.length} lançamento(s) recorrente(s) foram levados para ${nextMonthValue}.`,
   );
 }
