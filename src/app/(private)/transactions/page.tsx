@@ -17,6 +17,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
   const error = getSingleParam(params.error);
   const success = getSingleParam(params.success);
   const editId = getSingleParam(params.edit);
+  const requestedType = getSingleParam(params.type);
   const selectedCategory = getSingleParam(params.category);
   const month = getMonthRange(getSingleParam(params.month));
 
@@ -53,6 +54,14 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
 
   const incomeCategories = categories.filter((category: (typeof categories)[number]) => category.type === TransactionType.INCOME);
   const expenseCategories = categories.filter((category: (typeof categories)[number]) => category.type === TransactionType.EXPENSE);
+  const initialType =
+    transactionToEdit?.type ??
+    (requestedType === TransactionType.INCOME ? TransactionType.INCOME : TransactionType.EXPENSE);
+  const defaultCategoryId =
+    transactionToEdit?.categoryId ??
+    (initialType === TransactionType.INCOME ? incomeCategories[0]?.id : expenseCategories[0]?.id);
+  const isEditingExistingTransaction = Boolean(transactionToEdit);
+  const isEditingInstallment = (transactionToEdit?.installmentCount ?? 1) > 1;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[440px,1fr]">
@@ -63,7 +72,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
             {transactionToEdit ? "Editar transação" : "Nova transação"}
           </h2>
           <p className="mt-2 text-sm leading-7 text-slate-400">
-            Registre entradas e saídas com categoria, data, recorrência e observações para manter o painel sempre confiável.
+            Registre entradas e saídas com categoria, data, recorrência, parcelamento e observações para manter o painel sempre confiável.
           </p>
         </div>
 
@@ -98,7 +107,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
               <span className="text-sm text-slate-300">Tipo</span>
               <select
                 name="type"
-                defaultValue={transactionToEdit?.type ?? TransactionType.EXPENSE}
+                defaultValue={initialType}
                 className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-cyan-300"
               >
                 <option value={TransactionType.EXPENSE}>Despesa</option>
@@ -126,7 +135,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
               <span className="text-sm text-slate-300">Categoria</span>
               <select
                 name="categoryId"
-                defaultValue={transactionToEdit?.categoryId}
+                defaultValue={defaultCategoryId}
                 className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-cyan-300"
               >
                 <optgroup label="Despesas">
@@ -160,19 +169,52 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
 
           <label className="block space-y-2">
             <span className="text-sm text-slate-300">Recorrência mensal</span>
+            {isEditingInstallment ? <input type="hidden" name="recurrenceType" value={RecurrenceType.NONE} /> : null}
             <select
               name="recurrenceType"
-              defaultValue={transactionToEdit?.recurrenceType ?? RecurrenceType.NONE}
+              defaultValue={isEditingInstallment ? RecurrenceType.NONE : transactionToEdit?.recurrenceType ?? RecurrenceType.NONE}
+              disabled={isEditingInstallment}
               className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-cyan-300"
             >
               <option value={RecurrenceType.NONE}>Sem recorrência</option>
-              <option value={RecurrenceType.FIXED}>Despesa fixa</option>
-              <option value={RecurrenceType.VARIABLE}>Despesa variável</option>
+              <option value={RecurrenceType.FIXED}>Fixa</option>
+              <option value={RecurrenceType.VARIABLE}>Variável</option>
             </select>
             <span className="text-xs leading-6 text-slate-400">
-              Use apenas para despesas. Receitas sempre são salvas sem recorrência.
+              Use Fixa ou Variável apenas para despesas contínuas. Receitas sempre são salvas sem recorrência.
             </span>
           </label>
+
+          <label className="block space-y-2">
+            <span className="text-sm text-slate-300">Parcelamento</span>
+            {isEditingExistingTransaction ? (
+              <input type="hidden" name="installmentCount" value={transactionToEdit?.installmentCount ?? 1} />
+            ) : null}
+            <input
+              name="installmentCount"
+              type="number"
+              min="1"
+              max="24"
+              required
+              defaultValue={transactionToEdit?.installmentCount ?? 1}
+              disabled={isEditingExistingTransaction}
+              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+              placeholder="1"
+            />
+            <span className="text-xs leading-6 text-slate-400">
+              Use 1 para compra à vista. Para cartão parcelado, escolha de 2x até 24x. O valor informado será dividido entre as parcelas. Parcelamento não se mistura com recorrência.
+            </span>
+          </label>
+
+          {isEditingInstallment ? (
+            <div className="rounded-2xl border border-violet-400/20 bg-violet-400/10 px-4 py-3 text-sm text-violet-100">
+              Este lançamento faz parte de um parcelamento em {transactionToEdit?.installmentCount}x. A edição mantém o número de parcelas e ajusta apenas esta parcela.
+            </div>
+          ) : isEditingExistingTransaction ? (
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+              Para transformar um lançamento já existente em parcelado, exclua este item e crie um novo lançamento parcelado.
+            </div>
+          ) : null}
 
           <label className="block space-y-2">
             <span className="text-sm text-slate-300">Observações</span>
@@ -218,7 +260,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300"
               >
                 <option value="">Todas as categorias</option>
-                {categories.map((category: (typeof categories)[number]) => (
+                  {categories.map((category: (typeof categories)[number]) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
@@ -251,6 +293,10 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                 : transaction.recurrenceType === RecurrenceType.VARIABLE
                   ? "Variável"
                   : null;
+            const installmentLabel =
+              transaction.installmentCount > 1
+                ? `Parcela ${transaction.installmentNumber}/${transaction.installmentCount}`
+                : null;
 
             return (
               <article key={transaction.id} className="rounded-3xl border border-white/10 bg-white/5 p-5">
@@ -266,6 +312,11 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                       {recurrenceLabel ? (
                         <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-100">
                           {recurrenceLabel}
+                        </span>
+                      ) : null}
+                      {installmentLabel ? (
+                        <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-xs font-semibold text-violet-100">
+                          {installmentLabel}
                         </span>
                       ) : null}
                     </div>
