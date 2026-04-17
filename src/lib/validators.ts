@@ -40,4 +40,9 @@ export const transactionSchema = z.object({
   amount: z.string().min(1, "Informe um valor."),
   transactionDate: z.string().min(1, "Selecione uma data."),
   recurrenceType: z.enum(RecurrenceType).default(RecurrenceType.NONE),
+  installmentCount: z.coerce
+    .number({ message: "Informe a quantidade de parcelas." })
+    .int("A quantidade de parcelas deve ser um número inteiro.")
+    .min(1, "A quantidade mínima é 1x.")
+    .max(24, "O parcelamento máximo é 24x."),
 });
