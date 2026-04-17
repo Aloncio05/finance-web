@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AnnualProjectionChart } from "@/components/annual-projection-chart";
+import { AnnualProjectionChart, type AnnualChartType } from "@/components/annual-projection-chart";
 import { RecurrenceType, TransactionType } from "@/generated/prisma/client";
 import { buildAnnualProjection } from "@/lib/annual-projection";
 import { formatCurrencyFromCents, getSingleParam, getYearRange } from "@/lib/format";
@@ -11,11 +11,24 @@ type AnnualDashboardPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+const CHART_TYPE_OPTIONS: Array<{ value: AnnualChartType; label: string }> = [
+  { value: "grouped-bar", label: "Barras agrupadas" },
+  { value: "line", label: "Linha" },
+  { value: "area", label: "Área" },
+  { value: "stacked-bar", label: "Barras empilhadas" },
+  { value: "combo", label: "Combinado" },
+];
+
+function getChartType(value: string | undefined): AnnualChartType {
+  return CHART_TYPE_OPTIONS.some((option) => option.value === value) ? (value as AnnualChartType) : "grouped-bar";
+}
+
 export default async function AnnualDashboardPage({ searchParams }: AnnualDashboardPageProps) {
   const session = await verifySession();
   const params = await searchParams;
   const selectedCategory = getSingleParam(params.category);
   const year = getYearRange(getSingleParam(params.year));
+  const chartType = getChartType(getSingleParam(params.chartType));
 
   const [categories, yearTransactions, recurringExpenseHistory] = await Promise.all([
     prisma.category.findMany({
@@ -72,20 +85,21 @@ export default async function AnnualDashboardPage({ searchParams }: AnnualDashbo
   const projection = buildAnnualProjection(year.year, yearTransactions, recurringExpenseHistory);
   const monthsWithProjection = projection.months.filter((month) => month.projectedExpenseCents > 0).length;
   const selectedCategoryName = categories.find((category: (typeof categories)[number]) => category.id === selectedCategory)?.name;
+  const selectedChartType = CHART_TYPE_OPTIONS.find((option) => option.value === chartType)?.label ?? "Barras agrupadas";
 
   return (
     <div className="space-y-8">
       <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,#111827_0%,#0f172a_45%,#082f49_100%)] p-6 shadow-2xl shadow-cyan-950/20 sm:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Projeção anual</p>
+            <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Visão anual</p>
             <h2 className="text-3xl font-semibold text-white sm:text-4xl">{year.label}</h2>
             <p className="max-w-3xl text-sm leading-7 text-slate-300">
               Veja o gasto do ano inteiro mês a mês. Os meses futuros usam as despesas recorrentes já cadastradas para antecipar o que tende a acontecer.
             </p>
           </div>
 
-          <form className="grid gap-3 rounded-3xl border border-white/10 bg-slate-950/40 p-4 sm:grid-cols-[140px,1fr,auto]">
+          <form className="grid gap-3 rounded-3xl border border-white/10 bg-slate-950/40 p-4 sm:grid-cols-[140px,1fr,180px,auto]">
             <input
               type="number"
               name="year"
@@ -103,6 +117,17 @@ export default async function AnnualDashboardPage({ searchParams }: AnnualDashbo
               {categories.map((category: (typeof categories)[number]) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
+                </option>
+              ))}
+            </select>
+            <select
+              name="chartType"
+              defaultValue={chartType}
+              className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+            >
+              {CHART_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
@@ -152,12 +177,12 @@ export default async function AnnualDashboardPage({ searchParams }: AnnualDashbo
               <p className="mt-1 text-sm text-slate-400">Comparativo entre o que já aconteceu e o que tende a entrar pelos recorrentes.</p>
             </div>
             <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
-              Projeção
+              {selectedChartType}
             </span>
           </div>
 
           <div className="mt-6">
-            <AnnualProjectionChart data={projection.months} />
+            <AnnualProjectionChart data={projection.months} chartType={chartType} />
           </div>
         </div>
 
