@@ -102,6 +102,49 @@ function isLocalAppUrl(appUrl: string) {
   }
 }
 
+type AuthLookupResult =
+  | { status: "not_found" }
+  | { status: "conflict" }
+  | {
+      status: "resolved";
+      user: {
+        id: string;
+        email: string;
+        passwordHash: string;
+      };
+    };
+
+async function resolveAuthUserByEmail(email: string): Promise<AuthLookupResult> {
+  const users = await prisma.user.findMany({
+    where: {
+      email: {
+        equals: email,
+        mode: "insensitive",
+      },
+    },
+    select: {
+      id: true,
+      email: true,
+      passwordHash: true,
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: 2,
+  });
+
+  if (users.length === 0) {
+    return { status: "not_found" };
+  }
+
+  if (users.length > 1) {
+    return { status: "conflict" };
+  }
+
+  return {
+    status: "resolved",
+    user: users[0],
+  };
+}
+
 export async function registerAction(formData: FormData) {
   const parsed = authSchema.extend({ name: authSchema.shape.name.unwrap() }).safeParse({
     name: formData.get("name"),
@@ -113,16 +156,9 @@ export async function registerAction(formData: FormData) {
     fail("/register", parsed.error.issues[0]?.message ?? "Dados inválidos.");
   }
 
-  const existingUser = await prisma.user.findUnique({
-    where: {
-      email: parsed.data.email,
-    },
-    select: {
-      id: true,
-    },
-  });
+  const existingUser = await resolveAuthUserByEmail(parsed.data.email);
 
-  if (existingUser) {
+  if (existingUser.status !== "not_found") {
     fail("/register", "Já existe uma conta com esse e-mail.");
   }
 
@@ -173,18 +209,17 @@ export async function loginAction(formData: FormData) {
     fail("/login", parsed.error.issues[0]?.message ?? "Credenciais inválidas.");
   }
 
-  const user = await prisma.user.findFirst({
-    where: {
-      email: {
-        equals: parsed.data.email,
-        mode: "insensitive",
-      },
-    },
-  });
+  const resolvedUser = await resolveAuthUserByEmail(parsed.data.email);
 
-  if (!user) {
+  if (resolvedUser.status === "not_found") {
     fail("/login", "E-mail ou senha inválidos.");
   }
+
+  if (resolvedUser.status === "conflict") {
+    fail("/login", "Encontramos conflito em uma conta antiga com esse e-mail. Ajuste o cadastro antes de continuar.");
+  }
+
+  const user = resolvedUser.user;
 
   const isValidPassword = await bcrypt.compare(parsed.data.password, user.passwordHash);
 
@@ -220,24 +255,22 @@ export async function forgotPasswordAction(formData: FormData) {
     fail("/forgot-password", parsed.error.issues[0]?.message ?? "Informe um e-mail válido.");
   }
 
-  const user = await prisma.user.findFirst({
-    where: {
-      email: {
-        equals: parsed.data.email,
-        mode: "insensitive",
-      },
-    },
-    select: {
-      id: true,
-      email: true,
-    },
-  });
+  const resolvedUser = await resolveAuthUserByEmail(parsed.data.email);
 
   const genericMessage = "Se existir uma conta com esse e-mail, você verá as próximas instruções aqui.";
 
-  if (!user) {
+  if (resolvedUser.status === "not_found") {
     succeed("/forgot-password", genericMessage);
   }
+
+  if (resolvedUser.status === "conflict") {
+    fail("/forgot-password", "Encontramos conflito em uma conta antiga com esse e-mail. Ajuste o cadastro antes de continuar.");
+  }
+
+  const user = {
+    id: resolvedUser.user.id,
+    email: resolvedUser.user.email,
+  };
 
   const appUrl = getAppUrl();
   const token = crypto.randomBytes(32).toString("hex");
