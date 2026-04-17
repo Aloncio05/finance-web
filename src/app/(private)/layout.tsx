@@ -5,7 +5,7 @@ import { verifySession } from "@/lib/auth";
 
 const links = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/anual", label: "Projeção anual" },
+  { href: "/dashboard/anual", label: "Visão anual" },
   { href: "/transactions", label: "Transações" },
   { href: "/categories", label: "Categorias" },
 ];
