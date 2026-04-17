@@ -90,7 +90,17 @@ function hashOneTimeToken(token: string) {
 }
 
 function getAppUrl() {
-  return process.env.APP_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim() || LOCAL_APP_URL;
+  const explicitAppUrl = process.env.APP_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
+
+  if (explicitAppUrl) {
+    return explicitAppUrl;
+  }
+
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL || process.env.VERCEL_URL) {
+    throw new Error("APP_URL must be configured with the public site origin in public environments.");
+  }
+
+  return LOCAL_APP_URL;
 }
 
 function isLocalAppUrl(appUrl: string) {
@@ -143,6 +153,24 @@ async function resolveAuthUserByEmail(email: string): Promise<AuthLookupResult> 
     status: "resolved",
     user: users[0],
   };
+}
+
+function getForgotPasswordDeliveryErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message.includes("APP_URL")) {
+    return "Defina APP_URL com o endereço público do site antes de enviar o e-mail de redefinição.";
+  }
+
+  if (message.includes("EMAIL_FROM") || message.includes("resend.dev")) {
+    return "Defina EMAIL_FROM com um remetente de domínio verificado na Resend para entregar a redefinição em produção.";
+  }
+
+  if (message.includes("Resend email delivery failed")) {
+    return "A Resend recusou o envio. Verifique domínio verificado, remetente e a lista de suppressions.";
+  }
+
+  return "O envio do e-mail de redefinição não está configurado corretamente neste ambiente.";
 }
 
 export async function registerAction(formData: FormData) {
@@ -305,11 +333,8 @@ export async function forgotPasswordAction(formData: FormData) {
       to: user.email,
       resetLink,
     });
-  } catch {
-    fail(
-      "/forgot-password",
-      "O envio do e-mail de redefinicao nao esta configurado corretamente neste ambiente.",
-    );
+  } catch (error) {
+    fail("/forgot-password", getForgotPasswordDeliveryErrorMessage(error));
   }
 
   succeed("/forgot-password", genericMessage);
