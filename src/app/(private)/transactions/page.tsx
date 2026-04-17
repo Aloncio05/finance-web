@@ -260,7 +260,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300"
               >
                 <option value="">Todas as categorias</option>
-                  {categories.map((category: (typeof categories)[number]) => (
+                {categories.map((category: (typeof categories)[number]) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
