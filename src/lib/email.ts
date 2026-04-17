@@ -17,11 +17,25 @@ function getRequiredEnv(name: "RESEND_API_KEY" | "EMAIL_FROM") {
   return value;
 }
 
+function isPublicRuntime() {
+  return process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL) || Boolean(process.env.VERCEL_URL);
+}
+
+function getEmailFrom() {
+  const from = getRequiredEnv("EMAIL_FROM");
+
+  if (isPublicRuntime() && from.toLowerCase().includes("@resend.dev")) {
+    throw new Error("EMAIL_FROM must use a verified custom domain in public environments.");
+  }
+
+  return from;
+}
+
 export async function sendPasswordResetEmail({ to, resetLink }: PasswordResetEmailInput) {
   const resend = new Resend(getRequiredEnv("RESEND_API_KEY"));
 
-  await resend.emails.send({
-    from: getRequiredEnv("EMAIL_FROM"),
+  const result = await resend.emails.send({
+    from: getEmailFrom(),
     to,
     subject: "Redefina sua senha no Finance Web",
     text: [
@@ -50,4 +64,8 @@ export async function sendPasswordResetEmail({ to, resetLink }: PasswordResetEma
       </div>
     `,
   });
+
+  if (result.error) {
+    throw new Error(`Resend email delivery failed: ${result.error.name} - ${result.error.message}`);
+  }
 }
