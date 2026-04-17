@@ -14,8 +14,10 @@ export type AnnualProjectionMonth = {
   monthIndex: number;
   monthLabel: string;
   actualIncomeCents: number;
+  projectedIncomeCents: number;
   actualExpenseCents: number;
   projectedExpenseCents: number;
+  totalIncomeCents: number;
   totalExpenseCents: number;
   balanceCents: number;
   cumulativeExpenseCents: number;
@@ -25,15 +27,17 @@ export type AnnualProjectionMonth = {
 export type AnnualProjectionSummary = {
   months: AnnualProjectionMonth[];
   totalActualIncomeCents: number;
+  totalProjectedIncomeCents: number;
   totalActualExpenseCents: number;
   totalProjectedExpenseCents: number;
+  totalIncomeCents: number;
   totalExpenseCents: number;
 };
 
 export function buildAnnualProjection(
   year: number,
   yearTransactions: ProjectionTransaction[],
-  recurringExpenseHistory: ProjectionTransaction[],
+  recurringHistory: ProjectionTransaction[],
   today = new Date(),
 ): AnnualProjectionSummary {
   const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -41,8 +45,10 @@ export function buildAnnualProjection(
     monthIndex,
     monthLabel: MONTH_NAMES_PT[monthIndex],
     actualIncomeCents: 0,
+    projectedIncomeCents: 0,
     actualExpenseCents: 0,
     projectedExpenseCents: 0,
+    totalIncomeCents: 0,
     totalExpenseCents: 0,
     balanceCents: 0,
     cumulativeExpenseCents: 0,
@@ -61,11 +67,11 @@ export function buildAnnualProjection(
     bucket.actualExpenseCents += transaction.amountCents;
   }
 
-  const recurringById = new Map(recurringExpenseHistory.map((transaction) => [transaction.id, transaction]));
+  const recurringById = new Map(recurringHistory.map((transaction) => [transaction.id, transaction]));
   const chainRootCache = new Map<string, string>();
   const recurringByRoot = new Map<string, ProjectionTransaction[]>();
 
-  for (const transaction of recurringExpenseHistory) {
+  for (const transaction of recurringHistory) {
     const rootId = resolveChainRootId(transaction, recurringById, chainRootCache);
     const chain = recurringByRoot.get(rootId) ?? [];
     chain.push(transaction);
@@ -96,7 +102,11 @@ export function buildAnnualProjection(
       }
 
       if (months[monthIndex].isFutureMonth && latestKnownAmount) {
-        months[monthIndex].projectedExpenseCents += latestKnownAmount;
+        if (chain[0]?.type === "INCOME") {
+          months[monthIndex].projectedIncomeCents += latestKnownAmount;
+        } else {
+          months[monthIndex].projectedExpenseCents += latestKnownAmount;
+        }
       }
     }
   }
@@ -104,21 +114,25 @@ export function buildAnnualProjection(
   let runningExpenseTotal = 0;
 
   for (const month of months) {
+    month.totalIncomeCents = month.actualIncomeCents + month.projectedIncomeCents;
     month.totalExpenseCents = month.actualExpenseCents + month.projectedExpenseCents;
-    month.balanceCents = month.actualIncomeCents - month.totalExpenseCents;
+    month.balanceCents = month.totalIncomeCents - month.totalExpenseCents;
     runningExpenseTotal += month.totalExpenseCents;
     month.cumulativeExpenseCents = runningExpenseTotal;
   }
 
   const totalActualIncomeCents = months.reduce((sum, month) => sum + month.actualIncomeCents, 0);
+  const totalProjectedIncomeCents = months.reduce((sum, month) => sum + month.projectedIncomeCents, 0);
   const totalActualExpenseCents = months.reduce((sum, month) => sum + month.actualExpenseCents, 0);
   const totalProjectedExpenseCents = months.reduce((sum, month) => sum + month.projectedExpenseCents, 0);
 
   return {
     months,
     totalActualIncomeCents,
+    totalProjectedIncomeCents,
     totalActualExpenseCents,
     totalProjectedExpenseCents,
+    totalIncomeCents: totalActualIncomeCents + totalProjectedIncomeCents,
     totalExpenseCents: totalActualExpenseCents + totalProjectedExpenseCents,
   };
 }
