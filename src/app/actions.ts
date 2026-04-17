@@ -70,12 +70,19 @@ function succeed(path: string, message: string): never {
   redirect(`${path}${separator}success=${encodeURIComponent(message)}`);
 }
 
-function getNextMonthDate(date: Date) {
-  const nextMonthStart = new Date(date.getFullYear(), date.getMonth() + 1, 1, 12);
-  const nextMonthLastDay = new Date(date.getFullYear(), date.getMonth() + 2, 0).getDate();
+function addMonthsPreservingDay(date: Date, monthsToAdd: number) {
+  const nextMonthStart = new Date(date.getFullYear(), date.getMonth() + monthsToAdd, 1, 12);
+  const nextMonthLastDay = new Date(date.getFullYear(), date.getMonth() + monthsToAdd + 1, 0).getDate();
 
   nextMonthStart.setDate(Math.min(date.getDate(), nextMonthLastDay));
   return nextMonthStart;
+}
+
+function splitAmountIntoInstallments(totalAmountCents: number, installmentCount: number) {
+  const baseAmount = Math.floor(totalAmountCents / installmentCount);
+  const remainder = totalAmountCents % installmentCount;
+
+  return Array.from({ length: installmentCount }, (_, index) => baseAmount + (index < remainder ? 1 : 0));
 }
 
 function hashOneTimeToken(token: string) {
@@ -468,6 +475,7 @@ export async function saveTransactionAction(formData: FormData) {
     amount: formData.get("amount"),
     transactionDate: formData.get("transactionDate"),
     recurrenceType: formData.get("recurrenceType") || RecurrenceType.NONE,
+    installmentCount: formData.get("installmentCount") || 1,
   });
 
   if (!parsed.success) {
@@ -508,6 +516,15 @@ export async function saveTransactionAction(formData: FormData) {
 
   const recurrenceType =
     parsed.data.type === TransactionType.EXPENSE ? parsed.data.recurrenceType : RecurrenceType.NONE;
+  const installmentCount = parsed.data.installmentCount;
+
+  if (parsed.data.type === TransactionType.INCOME && installmentCount > 1) {
+    fail("/transactions", "Parcelamento só pode ser usado para despesas.");
+  }
+
+  if (installmentCount > 1 && recurrenceType !== RecurrenceType.NONE) {
+    fail("/transactions", "Use recorrência ou parcelamento, não os dois ao mesmo tempo.");
+  }
 
   const payload = {
     description: parsed.data.description,
@@ -527,6 +544,9 @@ export async function saveTransactionAction(formData: FormData) {
       },
       select: {
         id: true,
+        installmentGroupId: true,
+        installmentNumber: true,
+        installmentCount: true,
       },
     });
 
@@ -534,23 +554,74 @@ export async function saveTransactionAction(formData: FormData) {
       fail("/transactions", "Transação não encontrada.");
     }
 
+    if (transaction.installmentCount > 1) {
+      await prisma.transaction.update({
+        where: {
+          id: transaction.id,
+        },
+        data: {
+          ...payload,
+          recurrenceType: RecurrenceType.NONE,
+          installmentGroupId: transaction.installmentGroupId,
+          installmentNumber: transaction.installmentNumber,
+          installmentCount: transaction.installmentCount,
+        },
+      });
+
+      revalidatePath("/transactions");
+      revalidatePath("/dashboard");
+      revalidatePath("/dashboard/anual");
+      redirect("/transactions");
+    }
+
+    if (installmentCount > 1) {
+      fail("/transactions", "Para transformar um lançamento existente em parcelado, exclua e crie novamente.");
+    }
+
     await prisma.transaction.update({
       where: {
         id: transaction.id,
       },
-      data: payload,
-    });
-  } else {
-    await prisma.transaction.create({
       data: {
         ...payload,
-        userId: session.user.id,
+        installmentGroupId: null,
+        installmentNumber: 1,
+        installmentCount: 1,
       },
     });
+  } else {
+    if (installmentCount > 1) {
+      const installmentGroupId = crypto.randomUUID();
+      const installmentAmounts = splitAmountIntoInstallments(amountCents, installmentCount);
+
+      await prisma.transaction.createMany({
+        data: Array.from({ length: installmentCount }, (_, index) => ({
+          ...payload,
+          userId: session.user.id,
+          amountCents: installmentAmounts[index] ?? 0,
+          transactionDate: addMonthsPreservingDay(transactionDate, index),
+          recurrenceType: RecurrenceType.NONE,
+          installmentGroupId,
+          installmentNumber: index + 1,
+          installmentCount,
+        })),
+      });
+    } else {
+      await prisma.transaction.create({
+        data: {
+          ...payload,
+          userId: session.user.id,
+          installmentGroupId: null,
+          installmentNumber: 1,
+          installmentCount: 1,
+        },
+      });
+    }
   }
 
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/anual");
   redirect("/transactions");
 }
 
@@ -584,6 +655,7 @@ export async function deleteTransactionAction(formData: FormData) {
 
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/anual");
   redirect("/transactions");
 }
 
@@ -645,10 +717,13 @@ export async function carryRecurringExpensesAction(formData: FormData) {
       type: transaction.type,
       description: transaction.description,
       amountCents: transaction.amountCents,
-      transactionDate: getNextMonthDate(transaction.transactionDate),
+      transactionDate: addMonthsPreservingDay(transaction.transactionDate, 1),
       notes: transaction.notes,
       recurrenceType: transaction.recurrenceType,
       carriedFromId: transaction.id,
+      installmentGroupId: null,
+      installmentNumber: 1,
+      installmentCount: 1,
     }));
 
   if (transactionsToCreate.length === 0) {
@@ -664,6 +739,7 @@ export async function carryRecurringExpensesAction(formData: FormData) {
 
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/anual");
   succeed(
     `/transactions?month=${nextMonthValue}`,
     `${transactionsToCreate.length} despesa(s) recorrente(s) foram levadas para ${nextMonthValue}.`,
