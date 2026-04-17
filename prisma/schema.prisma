@@ -72,22 +72,26 @@ model Category {
 }
 
 model Transaction {
-  id              String          @id @default(cuid())
-  userId          String
-  categoryId      String
-  type            TransactionType
-  description     String
-  amountCents     Int
-  transactionDate DateTime
-  notes           String?
-  recurrenceType  RecurrenceType  @default(NONE)
-  carriedFromId   String?
-  category        Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id                 String          @id @default(cuid())
+  userId             String
+  categoryId         String
+  type               TransactionType
+  description        String
+  amountCents        Int
+  transactionDate    DateTime
+  notes              String?
+  recurrenceType     RecurrenceType  @default(NONE)
+  carriedFromId      String?
+  installmentGroupId String?
+  installmentNumber  Int             @default(1)
+  installmentCount   Int             @default(1)
+  category           Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   @@index([userId, transactionDate])
   @@index([categoryId])
   @@index([carriedFromId])
+  @@index([installmentGroupId])
 }
