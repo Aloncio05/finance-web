@@ -13,6 +13,7 @@ const CHART_WIDTH = 720;
 const CHART_HEIGHT = 280;
 const PADDING_X = 32;
 const PADDING_Y = 24;
+const BAR_GAP = 6;
 
 export function AnnualProjectionChart({ data }: AnnualProjectionChartProps) {
   const highestValue = data.reduce((max, month) => Math.max(max, month.totalExpenseCents), 0);
@@ -27,27 +28,38 @@ export function AnnualProjectionChart({ data }: AnnualProjectionChartProps) {
 
   const chartInnerWidth = CHART_WIDTH - PADDING_X * 2;
   const chartInnerHeight = CHART_HEIGHT - PADDING_Y * 2;
-  const stepX = data.length > 1 ? chartInnerWidth / (data.length - 1) : 0;
+  const groupWidth = chartInnerWidth / data.length;
   const gridValues = Array.from({ length: 4 }, (_, index) => Math.round((highestValue / 4) * (4 - index)));
 
-  const points = data.map((month, index) => {
-    const x = PADDING_X + stepX * index;
-    const actualY = PADDING_Y + chartInnerHeight - (month.actualExpenseCents / highestValue) * chartInnerHeight;
-    const projectedY = PADDING_Y + chartInnerHeight - (month.projectedExpenseCents / highestValue) * chartInnerHeight;
-    const totalY = PADDING_Y + chartInnerHeight - (month.totalExpenseCents / highestValue) * chartInnerHeight;
+  const barWidth = Math.min(16, Math.max(8, (groupWidth - BAR_GAP * 4) / 3));
+  const groupBarWidth = barWidth * 3 + BAR_GAP * 2;
+
+  const bars = data.map((month, index) => {
+    const groupX = PADDING_X + groupWidth * index + (groupWidth - groupBarWidth) / 2;
+    const actualHeight = (month.actualExpenseCents / highestValue) * chartInnerHeight;
+    const projectedHeight = (month.projectedExpenseCents / highestValue) * chartInnerHeight;
+    const totalHeight = (month.totalExpenseCents / highestValue) * chartInnerHeight;
 
     return {
       month,
-      x,
-      actualY,
-      projectedY,
-      totalY,
+      labelX: groupX + groupBarWidth / 2,
+      actual: {
+        x: groupX,
+        y: PADDING_Y + chartInnerHeight - actualHeight,
+        height: actualHeight,
+      },
+      projected: {
+        x: groupX + barWidth + BAR_GAP,
+        y: PADDING_Y + chartInnerHeight - projectedHeight,
+        height: projectedHeight,
+      },
+      total: {
+        x: groupX + (barWidth + BAR_GAP) * 2,
+        y: PADDING_Y + chartInnerHeight - totalHeight,
+        height: totalHeight,
+      },
     };
   });
-
-  const actualLine = points.map((point) => `${point.x},${point.actualY}`).join(' ');
-  const projectedLine = points.map((point) => `${point.x},${point.projectedY}`).join(' ');
-  const totalLine = points.map((point) => `${point.x},${point.totalY}`).join(' ');
 
   return (
     <div className="rounded-3xl border border-white/10 bg-slate-950/30 p-4">
@@ -82,21 +94,17 @@ export function AnnualProjectionChart({ data }: AnnualProjectionChartProps) {
               );
             })}
 
-            <polyline fill="none" stroke="#fb923c" strokeWidth="3" points={actualLine} />
-            <polyline fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeDasharray="6 6" points={projectedLine} />
-            <polyline fill="none" stroke="#c084fc" strokeWidth="3" points={totalLine} />
-
-            {points.map((point) => (
-              <g key={point.month.monthLabel}>
-                <circle cx={point.x} cy={point.actualY} r="4" fill="#fb923c" />
-                <circle cx={point.x} cy={point.projectedY} r="3.5" fill="#22d3ee" />
-                <circle cx={point.x} cy={point.totalY} r="4" fill="#c084fc" />
+            {bars.map((bar) => (
+              <g key={bar.month.monthLabel}>
+                <rect x={bar.actual.x} y={bar.actual.y} width={barWidth} height={bar.actual.height} rx="4" fill="#fb923c" />
+                <rect x={bar.projected.x} y={bar.projected.y} width={barWidth} height={bar.projected.height} rx="4" fill="#22d3ee" />
+                <rect x={bar.total.x} y={bar.total.y} width={barWidth} height={bar.total.height} rx="4" fill="#c084fc" />
               </g>
             ))}
 
-            {points.map((point) => (
-              <text key={`${point.month.monthLabel}-label`} x={point.x} y={CHART_HEIGHT - 6} textAnchor="middle" fill="#cbd5e1" fontSize="11">
-                {point.month.monthLabel.slice(0, 3)}
+            {bars.map((bar) => (
+              <text key={`${bar.month.monthLabel}-label`} x={bar.labelX} y={CHART_HEIGHT - 6} textAnchor="middle" fill="#cbd5e1" fontSize="11">
+                {bar.month.monthLabel.slice(0, 3)}
               </text>
             ))}
           </svg>
