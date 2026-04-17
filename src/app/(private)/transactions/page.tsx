@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { carryRecurringExpensesAction, deleteTransactionAction, saveTransactionAction } from "@/app/actions";
+import { carryRecurringTransactionsAction, deleteTransactionAction, saveTransactionAction } from "@/app/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { RecurrenceType, TransactionType } from "@/generated/prisma/client";
 import { verifySession } from "@/lib/auth";
@@ -181,7 +181,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
               <option value={RecurrenceType.VARIABLE}>Variável</option>
             </select>
             <span className="text-xs leading-6 text-slate-400">
-              Use Fixa ou Variável apenas para despesas contínuas. Receitas sempre são salvas sem recorrência.
+              Use recorrência para lançamentos que se repetem todo mês, como salário, aluguel, assinaturas ou contas fixas.
             </span>
           </label>
 
@@ -271,7 +271,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
               </button>
             </form>
 
-            <form action={carryRecurringExpensesAction}>
+            <form action={carryRecurringTransactionsAction}>
               <input type="hidden" name="month" value={month.value} />
               <button className="w-full rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/20 lg:w-auto">
                 Levar recorrentes para o próximo mês
@@ -281,7 +281,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
         </div>
 
         <div className="mt-6 rounded-3xl border border-white/10 bg-slate-950/30 p-4 text-sm text-slate-300">
-          Despesas marcadas como <strong className="text-white">fixas</strong> ou <strong className="text-white">variáveis</strong> podem ser levadas para o mês seguinte sem duplicar se você repetir a ação.
+          Lançamentos marcados como <strong className="text-white">fixos</strong> ou <strong className="text-white">variáveis</strong> podem ser levados para o mês seguinte sem duplicar se você repetir a ação.
         </div>
 
         <div className="mt-6 space-y-3">
