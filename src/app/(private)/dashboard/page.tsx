@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { CategoryChart } from "@/components/category-chart";
+import { DashboardCategoryExplorer } from "@/components/dashboard-category-explorer";
 import { formatCurrencyFromCents, formatDate, getMonthRange, getSingleParam } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { getMonthlyPlan } from "@/lib/recommendations";
@@ -30,7 +30,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         gte: month.start,
         lt: month.end,
       },
-      ...(selectedCategory ? { categoryId: selectedCategory } : {}),
     },
     include: {
       category: true,
@@ -39,17 +38,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   });
 
   type DashboardTransaction = (typeof transactions)[number];
-  type ExpenseByCategory = { id: string; name: string; total: number; color: string; href: string };
-  const selectedCategoryName = categories.find((category: (typeof categories)[number]) => category.id === selectedCategory)?.name;
-  const buildDashboardHref = (categoryId?: string) => {
-    const hrefParams = new URLSearchParams({ month: month.value });
-
-    if (categoryId) {
-      hrefParams.set("category", categoryId);
-    }
-
-    return `/dashboard?${hrefParams}`;
-  };
+  type ExpenseByCategory = { id: string; name: string; total: number; color: string };
 
   const totalIncome = transactions
     .filter((transaction: DashboardTransaction) => transaction.type === "INCOME")
@@ -58,11 +47,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .filter((transaction: DashboardTransaction) => transaction.type === "EXPENSE")
     .reduce((sum: number, transaction: DashboardTransaction) => sum + transaction.amountCents, 0);
   const balance = totalIncome - totalExpense;
-  const percentageFormatter = new Intl.NumberFormat("pt-BR", {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: 1,
-    style: "percent",
-  });
   const monthlyPlan = getMonthlyPlan(totalIncome, totalExpense);
   const expensesByCategory = Object.values(
     transactions
@@ -73,7 +57,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           name: transaction.category.name,
           total: 0,
           color: transaction.category.color,
-          href: buildDashboardHref(transaction.categoryId),
         };
         current.total += transaction.amountCents;
         acc[transaction.categoryId] = current;
@@ -173,99 +156,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </article>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
-        <div className="rounded-[28px] border border-white/10 bg-slate-900/80 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-semibold text-white">Despesas por categoria</h3>
-              <p className="mt-1 text-sm text-slate-400">
-                {selectedCategoryName
-                  ? `Mostrando movimentações de ${selectedCategoryName}.`
-                  : "Clique em uma categoria para ver só as despesas dela."}
-              </p>
-            </div>
-            <Link href={selectedCategory ? buildDashboardHref() : "/transactions"} className="text-sm font-medium text-cyan-300 transition hover:text-cyan-200">
-              {selectedCategory ? "Limpar filtro" : "Ver transações"}
-            </Link>
-          </div>
-
-          <div className="mt-6 grid gap-6 xl:grid-cols-[1fr,280px] xl:items-center">
-            <CategoryChart data={expensesByCategory} />
-
-            <ul className="space-y-3">
-              {expensesByCategory.length === 0 ? (
-                <li className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-sm text-slate-400">
-                  Nenhuma despesa encontrada neste período.
-                </li>
-              ) : (
-                expensesByCategory.map((item: ExpenseByCategory) => {
-                  const percentage = totalExpense > 0 ? item.total / totalExpense : 0;
-
-                  return (
-                    <li key={item.id}>
-                      <Link href={item.href} className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-cyan-300/40 hover:bg-cyan-400/10">
-                        <div className="flex items-center gap-3">
-                          <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                          <span className="text-sm text-slate-200">{item.name}</span>
-                        </div>
-                        <div className="text-right">
-                          <strong className="block text-sm font-semibold text-white">{formatCurrencyFromCents(item.total)}</strong>
-                          <span className="text-xs font-medium text-slate-400">{percentageFormatter.format(percentage)} dos gastos</span>
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })
-              )}
-            </ul>
-          </div>
-        </div>
-
-        <div className="rounded-[28px] border border-white/10 bg-slate-900/80 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-semibold text-white">Movimentações recentes</h3>
-              <p className="mt-1 text-sm text-slate-400">
-                {selectedCategoryName
-                  ? `Últimos lançamentos de ${selectedCategoryName} no mês atual.`
-                  : "Últimos lançamentos filtrados pelo mês atual."}
-              </p>
-            </div>
-            <Link href="/transactions" className="text-sm font-medium text-cyan-300 transition hover:text-cyan-200">
-              Novo lançamento
-            </Link>
-          </div>
-
-          <div className="mt-6 space-y-3">
-            {transactions.slice(0, 6).map((transaction: DashboardTransaction) => {
-              const isIncome = transaction.type === "INCOME";
-
-              return (
-                <article key={transaction.id} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-medium text-white">{transaction.description}</p>
-                      <p className="mt-1 text-sm text-slate-400">
-                        {transaction.category.name} · {formatDate(transaction.transactionDate)}
-                      </p>
-                    </div>
-                    <strong className={isIncome ? "text-emerald-300" : "text-rose-300"}>
-                      {isIncome ? "+" : "-"}
-                      {formatCurrencyFromCents(transaction.amountCents)}
-                    </strong>
-                  </div>
-                </article>
-              );
-            })}
-
-            {transactions.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-slate-400">
-                Nenhuma movimentação no período. Comece criando sua primeira transação.
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </section>
+      <DashboardCategoryExplorer
+        categories={expensesByCategory}
+        initialCategoryId={selectedCategory}
+        totalExpense={totalExpense}
+        transactions={transactions.map((transaction: DashboardTransaction) => ({
+          id: transaction.id,
+          categoryId: transaction.categoryId,
+          categoryName: transaction.category.name,
+          description: transaction.description,
+          amountCents: transaction.amountCents,
+          dateLabel: formatDate(transaction.transactionDate),
+          isIncome: transaction.type === "INCOME",
+        }))}
+      />
     </div>
   );
 }

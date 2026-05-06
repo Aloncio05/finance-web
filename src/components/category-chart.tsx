@@ -4,14 +4,16 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 type CategoryChartProps = {
   data: Array<{
+    id?: string;
     name: string;
     total: number;
     color: string;
-    href?: string;
   }>;
+  onSelectCategory?: (categoryId: string) => void;
+  selectedCategoryId?: string | null;
 };
 
-export function CategoryChart({ data }: CategoryChartProps) {
+export function CategoryChart({ data, onSelectCategory, selectedCategoryId }: CategoryChartProps) {
   if (data.length === 0) {
       return (
         <div className="flex h-72 items-center justify-center rounded-3xl border border-white/10 bg-slate-950/30 text-sm text-slate-400">
@@ -35,11 +37,12 @@ export function CategoryChart({ data }: CategoryChartProps) {
             {data.map((entry) => (
               <Cell
                 key={entry.name}
-                className={entry.href ? "cursor-pointer outline-none" : undefined}
+                className={entry.id ? "cursor-pointer outline-none" : undefined}
                 fill={entry.color}
+                opacity={!selectedCategoryId || selectedCategoryId === entry.id ? 1 : 0.45}
                 onClick={() => {
-                  if (entry.href) {
-                    window.location.href = entry.href;
+                  if (entry.id) {
+                    onSelectCategory?.(entry.id);
                   }
                 }}
               />
