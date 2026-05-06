@@ -174,7 +174,7 @@ export default async function AnnualDashboardPage({ searchParams }: AnnualDashbo
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xl font-semibold text-white">Gasto do ano mês a mês</h3>
-              <p className="mt-1 text-sm text-slate-400">Comparativo entre o que já aconteceu e o que tende a entrar pelos recorrentes.</p>
+              <p className="mt-1 text-sm text-slate-400">Clique em um mês para fazer drill down entre realizado e projetado.</p>
             </div>
             <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">
               {selectedChartType}

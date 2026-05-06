@@ -1,8 +1,11 @@
-import { formatCurrencyFromCents } from "@/lib/format";
+'use client';
+
+import { useState } from "react";
 
 export type AnnualChartType = "grouped-bar" | "line" | "area" | "stacked-bar" | "combo";
 
 type AnnualProjectionMonth = {
+  monthIndex: number;
   monthLabel: string;
   actualExpenseCents: number;
   projectedExpenseCents: number;
@@ -20,13 +23,81 @@ const PADDING_X = 32;
 const PADDING_Y = 24;
 const BAR_GAP = 6;
 
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  currency: "BRL",
+  style: "currency",
+});
+
+function formatCurrencyFromCents(value: number) {
+  return currencyFormatter.format(value / 100);
+}
+
 export function AnnualProjectionChart({ data, chartType }: AnnualProjectionChartProps) {
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState<number | null>(null);
+  const selectedMonth = data.find((month) => month.monthIndex === selectedMonthIndex) ?? null;
   const highestValue = data.reduce((max, month) => Math.max(max, month.totalExpenseCents), 0);
 
   if (highestValue === 0) {
     return (
       <div className="flex h-80 items-center justify-center rounded-3xl border border-white/10 bg-slate-950/30 text-sm text-slate-400">
         Cadastre despesas ou marque recorrências para acompanhar a visão anual.
+      </div>
+    );
+  }
+
+  if (selectedMonth) {
+    const detailItems = [
+      { label: "Realizado", value: selectedMonth.actualExpenseCents, color: "#fb923c" },
+      { label: "Projetado", value: selectedMonth.projectedExpenseCents, color: "#22d3ee" },
+    ];
+    const detailHighestValue = Math.max(...detailItems.map((item) => item.value), 1);
+
+    return (
+      <div className="rounded-3xl border border-white/10 bg-slate-950/30 p-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">Ano</span>
+              <span>/</span>
+              <span className="rounded-full border border-cyan-300/40 bg-cyan-400/10 px-3 py-1 text-cyan-100">
+                {selectedMonth.monthLabel}
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-slate-400">Drill down do mês: realizado contra projetado.</p>
+          </div>
+          <button
+            className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20"
+            onClick={() => setSelectedMonthIndex(null)}
+            type="button"
+          >
+            Voltar ao ano
+          </button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {detailItems.map((item) => {
+            const width = `${Math.max((item.value / detailHighestValue) * 100, item.value > 0 ? 8 : 0)}%`;
+
+            return (
+              <article key={item.label} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="inline-flex items-center gap-2 text-sm font-medium text-white">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                    {item.label}
+                  </span>
+                  <strong className="text-lg font-semibold text-white">{formatCurrencyFromCents(item.value)}</strong>
+                </div>
+                <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-800">
+                  <div className="h-full rounded-full" style={{ backgroundColor: item.color, width }} />
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+          Total do mês: <strong className="text-white">{formatCurrencyFromCents(selectedMonth.totalExpenseCents)}</strong>
+        </div>
       </div>
     );
   }
@@ -212,6 +283,19 @@ export function AnnualProjectionChart({ data, chartType }: AnnualProjectionChart
 
             {chartBody}
 
+            {data.map((month, index) => (
+              <rect
+                key={`${month.monthLabel}-drilldown-hitbox`}
+                className="cursor-pointer"
+                fill="transparent"
+                height={CHART_HEIGHT - PADDING_Y}
+                onClick={() => setSelectedMonthIndex(month.monthIndex)}
+                width={groupWidth}
+                x={PADDING_X + groupWidth * index}
+                y={0}
+              />
+            ))}
+
             {(chartType === "stacked-bar" ? stackedBars : bars).map((bar) => (
               <text key={`${bar.month.monthLabel}-label`} x={bar.labelX} y={CHART_HEIGHT - 6} textAnchor="middle" fill="#cbd5e1" fontSize="11">
                 {bar.month.monthLabel.slice(0, 3)}
@@ -223,7 +307,12 @@ export function AnnualProjectionChart({ data, chartType }: AnnualProjectionChart
 
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {data.map((month) => (
-          <article key={month.monthLabel} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+          <button
+            key={month.monthLabel}
+            className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left text-sm text-slate-300 transition hover:border-cyan-300/40 hover:bg-cyan-400/10"
+            onClick={() => setSelectedMonthIndex(month.monthIndex)}
+            type="button"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-medium text-white">{month.monthLabel}</p>
@@ -239,7 +328,7 @@ export function AnnualProjectionChart({ data, chartType }: AnnualProjectionChart
               <p>Realizado: {formatCurrencyFromCents(month.actualExpenseCents)}</p>
               <p>Projetado: {formatCurrencyFromCents(month.projectedExpenseCents)}</p>
             </div>
-          </article>
+          </button>
         ))}
       </div>
     </div>
