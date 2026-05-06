@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AnnualProjectionChart, type AnnualChartType } from "@/components/annual-projection-chart";
 import { RecurrenceType, TransactionType } from "@/generated/prisma/client";
 import { buildAnnualProjection } from "@/lib/annual-projection";
-import { formatCurrencyFromCents, getSingleParam, getYearRange } from "@/lib/format";
+import { formatCurrencyFromCents, formatDate, getSingleParam, getYearRange } from "@/lib/format";
 import { verifySession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -47,16 +47,22 @@ export default async function AnnualDashboardPage({ searchParams }: AnnualDashbo
         ...(selectedCategory ? { categoryId: selectedCategory } : {}),
       },
       orderBy: [{ transactionDate: "asc" }, { createdAt: "asc" }],
-      select: {
-        id: true,
-        categoryId: true,
-        type: true,
-        amountCents: true,
-        transactionDate: true,
-        recurrenceType: true,
-        carriedFromId: true,
-      },
-    }),
+        select: {
+          id: true,
+          categoryId: true,
+          description: true,
+          type: true,
+          amountCents: true,
+          transactionDate: true,
+          recurrenceType: true,
+          carriedFromId: true,
+          category: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      }),
     prisma.transaction.findMany({
       where: {
         userId: session.user.id,
@@ -182,7 +188,19 @@ export default async function AnnualDashboardPage({ searchParams }: AnnualDashbo
           </div>
 
           <div className="mt-6">
-            <AnnualProjectionChart data={projection.months} chartType={chartType} />
+            <AnnualProjectionChart
+              chartType={chartType}
+              data={projection.months}
+              transactions={yearTransactions.map((transaction: (typeof yearTransactions)[number]) => ({
+                id: transaction.id,
+                monthIndex: transaction.transactionDate.getMonth(),
+                description: transaction.description,
+                categoryName: transaction.category.name,
+                amountCents: transaction.amountCents,
+                dateLabel: formatDate(transaction.transactionDate),
+                type: transaction.type,
+              }))}
+            />
           </div>
         </div>
 

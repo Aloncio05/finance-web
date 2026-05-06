@@ -10,11 +10,23 @@ type AnnualProjectionMonth = {
   actualExpenseCents: number;
   projectedExpenseCents: number;
   totalExpenseCents: number;
+  balanceCents: number;
+};
+
+type AnnualProjectionTransaction = {
+  id: string;
+  monthIndex: number;
+  description: string;
+  categoryName: string;
+  amountCents: number;
+  dateLabel: string;
+  type: "INCOME" | "EXPENSE";
 };
 
 type AnnualProjectionChartProps = {
   data: AnnualProjectionMonth[];
   chartType: AnnualChartType;
+  transactions: AnnualProjectionTransaction[];
 };
 
 const CHART_WIDTH = 720;
@@ -32,9 +44,12 @@ function formatCurrencyFromCents(value: number) {
   return currencyFormatter.format(value / 100);
 }
 
-export function AnnualProjectionChart({ data, chartType }: AnnualProjectionChartProps) {
+export function AnnualProjectionChart({ data, chartType, transactions }: AnnualProjectionChartProps) {
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number | null>(null);
   const selectedMonth = data.find((month) => month.monthIndex === selectedMonthIndex) ?? null;
+  const selectedMonthExpenses = selectedMonth
+    ? transactions.filter((transaction) => transaction.monthIndex === selectedMonth.monthIndex && transaction.type === "EXPENSE")
+    : [];
   const highestValue = data.reduce((max, month) => Math.max(max, month.totalExpenseCents), 0);
 
   if (highestValue === 0) {
@@ -97,6 +112,51 @@ export function AnnualProjectionChart({ data, chartType }: AnnualProjectionChart
 
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
           Total do mês: <strong className="text-white">{formatCurrencyFromCents(selectedMonth.totalExpenseCents)}</strong>
+        </div>
+
+        <div className={`mt-4 rounded-2xl border p-4 text-sm ${
+          selectedMonth.balanceCents >= 0
+            ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+            : "border-rose-400/20 bg-rose-400/10 text-rose-100"
+        }`}
+        >
+          Saldo do mês: <strong>{formatCurrencyFromCents(selectedMonth.balanceCents)}</strong>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h4 className="font-semibold text-white">Gastos do mês</h4>
+              <p className="mt-1 text-xs text-slate-400">Cada despesa lançada em {selectedMonth.monthLabel}.</p>
+            </div>
+            <span className="rounded-full border border-white/10 bg-slate-950/40 px-3 py-1 text-xs text-slate-300">
+              {selectedMonthExpenses.length} item(ns)
+            </span>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            {selectedMonthExpenses.length > 0 ? (
+              selectedMonthExpenses.map((transaction) => (
+                <article key={transaction.id} className="rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">{transaction.description}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {transaction.categoryName} · {transaction.dateLabel}
+                      </p>
+                    </div>
+                    <strong className="text-sm font-semibold text-rose-300">
+                      -{formatCurrencyFromCents(transaction.amountCents)}
+                    </strong>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-slate-400">
+                Nenhum gasto lançado neste mês.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
