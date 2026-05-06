@@ -44,6 +44,8 @@ function formatCurrencyFromCents(value: number) {
   return currencyFormatter.format(value / 100);
 }
 
+const detailColors = ["#22d3ee", "#a78bfa", "#fb7185", "#fbbf24", "#34d399", "#60a5fa", "#f472b6"];
+
 export function DashboardCategoryExplorer({
   categories,
   transactions,
@@ -55,6 +57,14 @@ export function DashboardCategoryExplorer({
   const visibleTransactions = selectedCategory
     ? transactions.filter((transaction) => transaction.categoryId === selectedCategory.id && !transaction.isIncome)
     : transactions.slice(0, 6);
+  const chartData = selectedCategory
+    ? visibleTransactions.map((transaction, index) => ({
+        id: transaction.id,
+        name: `${transaction.description} · ${transaction.dateLabel}`,
+        total: transaction.amountCents,
+        color: detailColors[index % detailColors.length] ?? selectedCategory.color,
+      }))
+    : categories;
 
   function selectCategory(categoryId: string) {
     setSelectedCategoryId((currentCategoryId) => currentCategoryId === categoryId ? "" : categoryId);
@@ -68,9 +78,20 @@ export function DashboardCategoryExplorer({
             <h3 className="text-xl font-semibold text-white">Despesas por categoria</h3>
             <p className="mt-1 text-sm text-slate-400">
               {selectedCategory
-                ? `Mostrando despesas de ${selectedCategory.name}. Clique em outra categoria para alternar.`
-                : "Clique em uma categoria para ver só as despesas dela."}
+                ? `Drill down em ${selectedCategory.name}: o gráfico agora mostra os lançamentos dessa categoria.`
+                : "Resumo por categoria. Clique em uma fatia ou categoria para descer ao detalhe."}
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">Resumo</span>
+              {selectedCategory ? (
+                <>
+                  <span>/</span>
+                  <span className="rounded-full border border-cyan-300/40 bg-cyan-400/10 px-3 py-1 text-cyan-100">
+                    {selectedCategory.name}
+                  </span>
+                </>
+              ) : null}
+            </div>
           </div>
           {selectedCategory ? (
             <button
@@ -88,7 +109,11 @@ export function DashboardCategoryExplorer({
         </div>
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[1fr,280px] xl:items-center">
-          <CategoryChart data={categories} onSelectCategory={selectCategory} selectedCategoryId={selectedCategoryId || null} />
+          <CategoryChart
+            data={chartData}
+            onSelectCategory={selectedCategory ? undefined : selectCategory}
+            selectedCategoryId={selectedCategory ? null : selectedCategoryId || null}
+          />
 
           <ul className="space-y-3">
             {categories.length === 0 ? (
