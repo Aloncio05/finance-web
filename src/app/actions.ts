@@ -716,6 +716,49 @@ export async function deleteTransactionAction(formData: FormData) {
   redirect("/transactions");
 }
 
+export async function cancelInstallmentsAction(formData: FormData) {
+  const session = await verifySession();
+  const id = String(formData.get("id") || "");
+  const monthValue = String(formData.get("month") || "");
+
+  if (!id) {
+    fail("/transactions", "Parcela inválida.");
+  }
+
+  const transaction = await prisma.transaction.findFirst({
+    where: {
+      id,
+      userId: session.user.id,
+    },
+    select: {
+      installmentGroupId: true,
+      installmentCount: true,
+    },
+  });
+
+  if (!transaction) {
+    fail("/transactions", "Parcela não encontrada.");
+  }
+
+  if (!transaction.installmentGroupId || transaction.installmentCount <= 1) {
+    fail("/transactions", "Este lançamento não faz parte de um parcelamento.");
+  }
+
+  const deleted = await prisma.transaction.deleteMany({
+    where: {
+      userId: session.user.id,
+      installmentGroupId: transaction.installmentGroupId,
+    },
+  });
+
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/anual");
+
+  const targetPath = /^\d{4}-\d{2}$/.test(monthValue) ? `/transactions?month=${monthValue}` : "/transactions";
+  succeed(targetPath, `${deleted.count} parcela(s) cancelada(s).`);
+}
+
 export async function carryRecurringTransactionsAction(formData: FormData) {
   const session = await verifySession();
   const monthValue = String(formData.get("month") || "");
