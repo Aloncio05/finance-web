@@ -1,6 +1,6 @@
 # Testing Patterns
 
-**Analysis Date:** Thu Apr 23 2026
+**Analysis Date:** Tue May 05 2026
 
 ## Test Framework
 
@@ -13,8 +13,8 @@
 
 **Run Commands:**
 ```bash
-npm run lint         # Only quality command currently defined in `package.json`
-npm run build        # Compile-time validation via Next.js and TypeScript checks
+bun run lint         # Only quality command currently defined in `package.json`
+bun run build        # Compile-time validation via Next.js and TypeScript checks
 Not applicable       # No watch-mode test command is defined
 Not applicable       # No coverage command is defined
 ```
@@ -125,7 +125,7 @@ Not applicable
 
 ## Current Quality Signals and Gaps
 
-- `npm run lint` exists in `package.json`, so linting is the only automated quality gate detected.
+- `lint` exists in `package.json`, so linting is the only automated quality gate detected.
 - `tsconfig.json` enables `strict: true`, which adds compile-time protection even without tests.
 - No unit, integration, or E2E tests exist for the main business-critical flows in `src/app/actions.ts`.
 - No tests protect authentication/session behavior in `src/lib/auth.ts`.
@@ -135,4 +135,4 @@ Not applicable
 
 ---
 
-*Testing analysis: Thu Apr 23 2026*
+*Testing analysis: Tue May 05 2026*

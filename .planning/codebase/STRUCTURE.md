@@ -1,6 +1,6 @@
 # Codebase Structure
 
-**Analysis Date:** Thu Apr 23 2026
+**Analysis Date:** Tue May 05 2026
 
 ## Directory Layout
 
@@ -132,4 +132,4 @@
 
 ---
 
-*Structure analysis: Thu Apr 23 2026*
+*Structure analysis: Tue May 05 2026*

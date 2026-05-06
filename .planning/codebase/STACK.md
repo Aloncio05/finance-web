@@ -1,6 +1,6 @@
 # Technology Stack
 
-**Analysis Date:** Thu Apr 23 2026
+**Analysis Date:** Tue May 05 2026
 
 ## Languages
 
@@ -19,7 +19,8 @@
 - Version pin: Not detected in repo root (`.nvmrc` not present).
 
 **Package Manager:**
-- npm - evidenced by `package-lock.json`, `package.json`, `README.md`, `start-dev.cmd`, and `vercel.json`.
+- npm is the repository-documented package manager, evidenced by `package-lock.json`, `README.md`, helper `.cmd` scripts, and `vercel.json`.
+- In this corporate agent environment, use `bun`/`bunx` for local commands when possible; Vercel remains configured to run `npm run vercel-build`.
 - Lockfile: present in `package-lock.json`.
 
 ## Frameworks
@@ -60,7 +61,7 @@
 **Environment:**
 - Environment variables are read from process env in `src/lib/prisma.ts`, `src/lib/email.ts`, `src/app/actions.ts`, and `prisma.config.ts`.
 - Example env files are present as `.env.example` and `.env.production.example`.
-- Key config names detected: `APP_URL`, `DATABASE_URL`, `DIRECT_URL`, `EMAIL_FROM`, `RESEND_API_KEY`, `TURSO_AUTH_TOKEN`.
+- Key config names detected: `APP_URL`, `DATABASE_URL`, `DIRECT_URL`, `EMAIL_FROM`, `RESEND_API_KEY`.
 
 **Build:**
 - App build/dev config: `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `postcss.config.mjs`.
@@ -70,7 +71,7 @@
 ## Platform Requirements
 
 **Development:**
-- Node.js + npm are required to run `package.json` scripts and local startup helpers in `start-dev.cmd`.
+- Node.js is required to run the Next.js/Prisma stack; repository docs use npm, while local agent commands should prefer Bun where feasible.
 - A configured database URL is required before `src/lib/prisma.ts` can initialize Prisma.
 - Local workflow expects a `.env` created from `.env.example`, as documented in `README.md` and enforced in `start-dev.cmd`.
 - Windows-specific helper scripts exist in `start-dev.cmd` and `abrir-finance-flow.cmd`.
@@ -78,8 +79,8 @@
 **Production:**
 - Deployment target is Vercel, indicated by `vercel.json`, `package.json` (`vercel-build`), `README.md`, and `DEPLOY_VERCEL.md`.
 - Public environment also requires email configuration for password reset flow in `src/lib/email.ts` and `src/app/actions.ts`.
-- Stack evidence is mixed for database hosting: `src/lib/prisma.ts` uses Neon/Postgres, while `README.md`, `.env*.example`, and `DEPLOY_VERCEL.md` document Turso/libSQL variables and Vercel deployment.
+- Database hosting path is PostgreSQL-compatible via Prisma + Neon adapter. `README.md` still mentions creating a banco no `Turso`, but the same file and `DEPLOY_VERCEL.md` now state that SQLite/libSQL do not match the active runtime.
 
 ---
 
-*Stack analysis: Thu Apr 23 2026*
+*Stack analysis: Tue May 05 2026*

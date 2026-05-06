@@ -1,6 +1,6 @@
 # Coding Conventions
 
-**Analysis Date:** Thu Apr 23 2026
+**Analysis Date:** Tue May 05 2026
 
 ## Naming Patterns
 
@@ -32,7 +32,7 @@
 - Indentation is mostly two spaces, but quality is inconsistent in `src/components/category-chart.tsx` and `src/app/(auth)/register/page.tsx`. Match the surrounding file when editing instead of introducing a third style.
 
 **Linting:**
-- Use ESLint via `npm run lint`, which maps to `eslint` in `package.json`.
+- Use ESLint via `bun run lint` in this environment, which maps to `eslint` in `package.json`.
 - Extend Next.js core web vitals and TypeScript presets from `eslint-config-next/core-web-vitals` and `eslint-config-next/typescript` in `eslint.config.mjs`.
 - Ignore build artifacts through `globalIgnores` in `eslint.config.mjs`: `.next/**`, `out/**`, `build/**`, and `next-env.d.ts`.
 - Type strictness is enabled in `tsconfig.json` with `strict: true`, `moduleResolution: "bundler"`, and `noEmit: true`.
@@ -102,4 +102,4 @@
 
 ---
 
-*Convention analysis: Thu Apr 23 2026*
+*Convention analysis: Tue May 05 2026*

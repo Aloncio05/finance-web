@@ -1,6 +1,6 @@
 # External Integrations
 
-**Analysis Date:** Thu Apr 23 2026
+**Analysis Date:** Tue May 05 2026
 
 ## APIs & External Services
 
@@ -18,9 +18,6 @@
 - Neon/Postgres adapter path - active Prisma adapter instantiated in `src/lib/prisma.ts`.
   - SDK/Client: `@prisma/adapter-neon` + generated Prisma client from `src/generated/prisma`
   - Auth: `DATABASE_URL`
-- Turso/libSQL deployment path - documented in `README.md`, `.env.example`, `.env.production.example`, and `DEPLOY_VERCEL.md`.
-  - SDK/Client: env files reference `TURSO_AUTH_TOKEN`; `package-lock.json` contains `@prisma/adapter-libsql` and `@libsql/client`
-  - Auth: `DATABASE_URL`, `TURSO_AUTH_TOKEN`
 
 ## Data Storage
 
@@ -29,8 +26,7 @@
   - Connection: `DATABASE_URL` in `src/lib/prisma.ts`
   - Direct/CLI connection: `DIRECT_URL` in `prisma.config.ts`
   - Client: Prisma generated client in `src/generated/prisma/client.ts`
-- Local SQLite-style development workflow is documented, but not reflected in active Prisma datasource config.
-  - Evidence: `README.md` and `DEPLOY_VERCEL.md` mention `DATABASE_URL="file:./dev.db"`, while `prisma/schema.prisma` sets `provider = "postgresql"` and `src/lib/prisma.ts` uses `PrismaNeon`
+- SQLite/libSQL are explicitly not supported by the active runtime, per `README.md`; the app expects a PostgreSQL-compatible database.
 
 **File Storage:**
 - Local filesystem only detected for source/assets in `src/app/favicon.ico`; no S3, Blob, Cloudinary, or upload SDK imports were found.
@@ -69,7 +65,6 @@
 - `APP_URL` - required in public environments by `src/app/actions.ts`
 - `EMAIL_FROM` - required by `src/lib/email.ts`
 - `RESEND_API_KEY` - required by `src/lib/email.ts`
-- `TURSO_AUTH_TOKEN` - present in `.env.example`, `.env.production.example`, `README.md`, and `DEPLOY_VERCEL.md`
 
 **Secrets location:**
 - Example placeholders live in `.env.example` and `.env.production.example`.
@@ -86,4 +81,4 @@
 
 ---
 
-*Integration audit: Thu Apr 23 2026*
+*Integration audit: Tue May 05 2026*

@@ -1,6 +1,6 @@
 # Architecture
 
-**Analysis Date:** Thu Apr 23 2026
+**Analysis Date:** Tue May 05 2026
 
 ## Pattern Overview
 
@@ -28,7 +28,7 @@
 - Used by: Forms in `src/app/(auth)/*.tsx`, `src/app/(private)/categories/page.tsx`, and `src/app/(private)/transactions/page.tsx`.
 
 **Data Access Layer:**
-- Purpose: Create and share the Prisma client connected through Neon/libSQL-compatible adapter configuration.
+- Purpose: Create and share the Prisma client connected through the Neon/PostgreSQL adapter configuration.
 - Location: `src/lib/prisma.ts`
 - Contains: Singleton Prisma client bootstrapping, `DATABASE_URL` guard, development global reuse.
 - Depends on: `@prisma/adapter-neon`, generated client at `src/generated/prisma/client.ts`, environment variables.
@@ -172,4 +172,4 @@
 
 ---
 
-*Architecture analysis: Thu Apr 23 2026*
+*Architecture analysis: Tue May 05 2026*
