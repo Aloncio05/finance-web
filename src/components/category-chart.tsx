@@ -7,6 +7,7 @@ type CategoryChartProps = {
     name: string;
     total: number;
     color: string;
+    href?: string;
   }>;
 };
 
@@ -32,7 +33,16 @@ export function CategoryChart({ data }: CategoryChartProps) {
             paddingAngle={3}
           >
             {data.map((entry) => (
-              <Cell key={entry.name} fill={entry.color} />
+              <Cell
+                key={entry.name}
+                className={entry.href ? "cursor-pointer outline-none" : undefined}
+                fill={entry.color}
+                onClick={() => {
+                  if (entry.href) {
+                    window.location.href = entry.href;
+                  }
+                }}
+              />
             ))}
           </Pie>
           <Tooltip

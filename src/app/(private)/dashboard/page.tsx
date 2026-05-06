@@ -39,7 +39,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   });
 
   type DashboardTransaction = (typeof transactions)[number];
-  type ExpenseByCategory = { name: string; total: number; color: string };
+  type ExpenseByCategory = { id: string; name: string; total: number; color: string; href: string };
+  const selectedCategoryName = categories.find((category: (typeof categories)[number]) => category.id === selectedCategory)?.name;
+  const buildDashboardHref = (categoryId?: string) => {
+    const hrefParams = new URLSearchParams({ month: month.value });
+
+    if (categoryId) {
+      hrefParams.set("category", categoryId);
+    }
+
+    return `/dashboard?${hrefParams}`;
+  };
 
   const totalIncome = transactions
     .filter((transaction: DashboardTransaction) => transaction.type === "INCOME")
@@ -59,9 +69,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .filter((transaction: DashboardTransaction) => transaction.type === "EXPENSE")
       .reduce<Record<string, ExpenseByCategory>>((acc: Record<string, ExpenseByCategory>, transaction: DashboardTransaction) => {
         const current = acc[transaction.categoryId] ?? {
+          id: transaction.categoryId,
           name: transaction.category.name,
           total: 0,
           color: transaction.category.color,
+          href: buildDashboardHref(transaction.categoryId),
         };
         current.total += transaction.amountCents;
         acc[transaction.categoryId] = current;
@@ -166,10 +178,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xl font-semibold text-white">Despesas por categoria</h3>
-              <p className="mt-1 text-sm text-slate-400">Onde seu dinheiro mais sai no período selecionado.</p>
+              <p className="mt-1 text-sm text-slate-400">
+                {selectedCategoryName
+                  ? `Mostrando movimentações de ${selectedCategoryName}.`
+                  : "Clique em uma categoria para ver só as despesas dela."}
+              </p>
             </div>
-            <Link href="/transactions" className="text-sm font-medium text-cyan-300 transition hover:text-cyan-200">
-              Ver transações
+            <Link href={selectedCategory ? buildDashboardHref() : "/transactions"} className="text-sm font-medium text-cyan-300 transition hover:text-cyan-200">
+              {selectedCategory ? "Limpar filtro" : "Ver transações"}
             </Link>
           </div>
 
@@ -186,15 +202,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   const percentage = totalExpense > 0 ? item.total / totalExpense : 0;
 
                   return (
-                    <li key={item.name} className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span className="text-sm text-slate-200">{item.name}</span>
-                      </div>
-                      <div className="text-right">
-                        <strong className="block text-sm font-semibold text-white">{formatCurrencyFromCents(item.total)}</strong>
-                        <span className="text-xs font-medium text-slate-400">{percentageFormatter.format(percentage)} dos gastos</span>
-                      </div>
+                    <li key={item.id}>
+                      <Link href={item.href} className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-cyan-300/40 hover:bg-cyan-400/10">
+                        <div className="flex items-center gap-3">
+                          <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                          <span className="text-sm text-slate-200">{item.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <strong className="block text-sm font-semibold text-white">{formatCurrencyFromCents(item.total)}</strong>
+                          <span className="text-xs font-medium text-slate-400">{percentageFormatter.format(percentage)} dos gastos</span>
+                        </div>
+                      </Link>
                     </li>
                   );
                 })
@@ -207,7 +225,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xl font-semibold text-white">Movimentações recentes</h3>
-              <p className="mt-1 text-sm text-slate-400">Últimos lançamentos filtrados pelo mês atual.</p>
+              <p className="mt-1 text-sm text-slate-400">
+                {selectedCategoryName
+                  ? `Últimos lançamentos de ${selectedCategoryName} no mês atual.`
+                  : "Últimos lançamentos filtrados pelo mês atual."}
+              </p>
             </div>
             <Link href="/transactions" className="text-sm font-medium text-cyan-300 transition hover:text-cyan-200">
               Novo lançamento
