@@ -48,6 +48,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .filter((transaction: DashboardTransaction) => transaction.type === "EXPENSE")
     .reduce((sum: number, transaction: DashboardTransaction) => sum + transaction.amountCents, 0);
   const balance = totalIncome - totalExpense;
+  const percentageFormatter = new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+    style: "percent",
+  });
   const monthlyPlan = getMonthlyPlan(totalIncome, totalExpense);
   const expensesByCategory = Object.values(
     transactions
@@ -177,15 +182,22 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   Nenhuma despesa encontrada neste período.
                 </li>
               ) : (
-                expensesByCategory.map((item: ExpenseByCategory) => (
-                  <li key={item.name} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span className="text-sm text-slate-200">{item.name}</span>
-                    </div>
-                    <strong className="text-sm font-semibold text-white">{formatCurrencyFromCents(item.total)}</strong>
-                  </li>
-                ))
+                expensesByCategory.map((item: ExpenseByCategory) => {
+                  const percentage = totalExpense > 0 ? item.total / totalExpense : 0;
+
+                  return (
+                    <li key={item.name} className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="text-sm text-slate-200">{item.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <strong className="block text-sm font-semibold text-white">{formatCurrencyFromCents(item.total)}</strong>
+                        <span className="text-xs font-medium text-slate-400">{percentageFormatter.format(percentage)} dos gastos</span>
+                      </div>
+                    </li>
+                  );
+                })
               )}
             </ul>
           </div>
