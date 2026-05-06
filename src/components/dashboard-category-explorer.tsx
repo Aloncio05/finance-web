@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { CategoryChart } from "@/components/category-chart";
-import { formatCurrencyFromCents } from "@/lib/format";
 
 type ExpenseByCategory = {
   id: string;
@@ -35,6 +34,15 @@ const percentageFormatter = new Intl.NumberFormat("pt-BR", {
   minimumFractionDigits: 1,
   style: "percent",
 });
+
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  currency: "BRL",
+  style: "currency",
+});
+
+function formatCurrencyFromCents(value: number) {
+  return currencyFormatter.format(value / 100);
+}
 
 export function DashboardCategoryExplorer({
   categories,
