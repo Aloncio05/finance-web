@@ -175,6 +175,87 @@ export default async function AnnualDashboardPage({ searchParams }: AnnualDashbo
         </div>
       </section>
 
+      <section className="rounded-[28px] border border-white/10 bg-slate-900/80 p-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">Dashboard anual por mês</p>
+            <h3 className="mt-2 text-2xl font-semibold text-white">Gastos, projeção e saldo</h3>
+            <p className="mt-2 text-sm text-slate-400">
+              Esta é a visão principal: acompanhe quanto gastou em cada mês, o que ainda está projetado e se o mês fechou positivo ou negativo.
+            </p>
+          </div>
+          <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-100">
+            Clique em um mês no gráfico abaixo para ver cada gasto lançado.
+          </span>
+        </div>
+
+        <div className="mt-6 overflow-x-auto">
+          <table className="min-w-full border-separate border-spacing-y-3 text-left text-sm text-slate-200">
+            <thead>
+              <tr className="text-slate-400">
+                <th className="px-4 py-2 font-medium">Mês</th>
+                <th className="px-4 py-2 font-medium">Gastos do mês</th>
+                <th className="px-4 py-2 font-medium">Projeção</th>
+                <th className="px-4 py-2 font-medium">Saldo</th>
+                <th className="px-4 py-2 font-medium">Leitura</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projection.months.map((month) => {
+                const balanceIsPositive = month.balanceCents >= 0;
+                const totalMonthExpense = month.actualExpenseCents + month.projectedExpenseCents;
+
+                return (
+                  <tr key={month.monthLabel} className="rounded-3xl bg-white/5 align-top shadow-sm shadow-slate-950/20">
+                    <td className="rounded-l-3xl border-y border-l border-white/10 px-4 py-4">
+                      <p className="font-semibold text-white">{month.monthLabel}</p>
+                      <p className="mt-1 text-xs text-slate-400">Acumulado: {formatCurrencyFromCents(month.cumulativeExpenseCents)}</p>
+                    </td>
+                    <td className="border-y border-white/10 px-4 py-4">
+                      <strong className="block text-lg font-semibold text-rose-300">{formatCurrencyFromCents(totalMonthExpense)}</strong>
+                      <span className="mt-1 block text-xs text-slate-400">
+                        Realizado: {formatCurrencyFromCents(month.actualExpenseCents)}
+                      </span>
+                    </td>
+                    <td className="border-y border-white/10 px-4 py-4">
+                      <strong className={month.projectedExpenseCents > 0 ? "block text-lg font-semibold text-cyan-300" : "block text-lg font-semibold text-slate-300"}>
+                        {formatCurrencyFromCents(month.projectedExpenseCents)}
+                      </strong>
+                      <span className="mt-1 block text-xs text-slate-400">Recorrentes ainda previstos</span>
+                    </td>
+                    <td className="border-y border-white/10 px-4 py-4">
+                      <strong className={`block text-lg font-semibold ${balanceIsPositive ? "text-emerald-300" : "text-rose-300"}`}>
+                        {formatCurrencyFromCents(month.balanceCents)}
+                      </strong>
+                      <span className="mt-1 block text-xs text-slate-400">{balanceIsPositive ? "Sobrou no mês" : "Faltou no mês"}</span>
+                    </td>
+                    <td className="rounded-r-3xl border-y border-r border-white/10 px-4 py-4">
+                      {month.projectedExpenseCents > 0 ? (
+                        <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100">
+                          Tem projeção
+                        </span>
+                      ) : month.isFutureMonth ? (
+                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                          Sem projeção
+                        </span>
+                      ) : balanceIsPositive ? (
+                        <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
+                          Positivo
+                        </span>
+                      ) : (
+                        <span className="rounded-full border border-rose-400/20 bg-rose-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-100">
+                          Negativo
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
         <div className="rounded-[28px] border border-white/10 bg-slate-900/80 p-6">
           <div className="flex items-center justify-between">
@@ -237,57 +318,6 @@ export default async function AnnualDashboardPage({ searchParams }: AnnualDashbo
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-white/10 bg-slate-900/80 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-xl font-semibold text-white">Tabela detalhada</h3>
-            <p className="mt-1 text-sm text-slate-400">Receitas reais, despesas realizadas, projeção restante e saldo de cada mês.</p>
-          </div>
-        </div>
-
-        <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full text-left text-sm text-slate-200">
-            <thead>
-              <tr className="border-b border-white/10 text-slate-400">
-                <th className="px-4 py-3 font-medium">Mês</th>
-                <th className="px-4 py-3 font-medium">Receitas</th>
-                <th className="px-4 py-3 font-medium">Despesas reais</th>
-                <th className="px-4 py-3 font-medium">Despesas projetadas</th>
-                <th className="px-4 py-3 font-medium">Saldo do mês</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projection.months.map((month) => (
-                <tr key={month.monthLabel} className="border-b border-white/5 last:border-b-0">
-                  <td className="px-4 py-4 font-medium text-white">{month.monthLabel}</td>
-                  <td className="px-4 py-4">{formatCurrencyFromCents(month.actualIncomeCents)}</td>
-                  <td className="px-4 py-4">{formatCurrencyFromCents(month.actualExpenseCents)}</td>
-                  <td className="px-4 py-4">{formatCurrencyFromCents(month.projectedExpenseCents)}</td>
-                  <td className={`px-4 py-4 font-semibold ${month.balanceCents >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                    {formatCurrencyFromCents(month.balanceCents)}
-                  </td>
-                  <td className="px-4 py-4">
-                    {month.projectedExpenseCents > 0 ? (
-                      <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100">
-                        Projetado
-                      </span>
-                    ) : month.isFutureMonth ? (
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                        Sem projeção
-                      </span>
-                    ) : (
-                      <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
-                        Realizado
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </div>
   );
 }
